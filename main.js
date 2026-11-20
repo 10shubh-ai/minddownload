@@ -258,6 +258,25 @@
     b.closest(".reveal").addEventListener("revealed", () => tween(1600, (k) => (b.textContent = Math.round(target * k))));
   });
 
+  /* ---------- scroll progress styled as a download ---------- */
+  const prog = document.querySelector(".progress"), pfill = document.querySelector(".progress-fill"), ppct = document.getElementById("ppct"), ptag = document.querySelector(".progress-tag");
+  function onScroll() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const k = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+    pfill.style.width = k * 100 + "%";
+    prog.classList.toggle("on", scrollY > 40);
+    const done = k > 0.995;
+    prog.classList.toggle("done", done);
+    ptag.innerHTML = done ? "<b>✓</b> Completed" : `<b>${Math.round(k * 100)}%</b> page downloaded`;
+    // keep the tag inside the viewport near the edges
+    ptag.style.transform = `translateX(${k < 0.08 ? "0%" : k > 0.92 ? "0%" : "50%"})`;
+    ptag.style.right = k > 0.92 ? "6px" : k < 0.08 ? "auto" : "0";
+    ptag.style.left = k < 0.08 ? "0" : "auto";
+  }
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  onScroll();
+
   /* ---------- MP3 waveform bars ---------- */
   const wave = document.querySelector(".wave");
   for (let i = 0; i < 36; i++) { const b = document.createElement("i"); b.style.animationDelay = -(i * 0.13 % 1.1) + "s"; b.style.animationDuration = 0.7 + ((i * 37) % 9) / 10 + "s"; wave.appendChild(b); }
