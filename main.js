@@ -26,30 +26,77 @@
   });
 
   /* ---------- binary rain + binary/sparkle cursor trail ---------- */
+  // Glyphs are pre-rendered once into small sprites and stamped with drawImage + globalAlpha,
+  // which is far cheaper than fillText/shadowBlur per glyph (matters a lot on phones).
   const cv = document.getElementById("field");
   const ctx = cv.getContext("2d");
   const tc = document.getElementById("trail");
   const tx2 = tc.getContext("2d");
-  const CELL = 22, TAIL = 16, FONT = 15;
-  let W, H, dpr, cols = [];
+  const touch = !fine;
+  const CELL = touch ? 26 : 22, TAIL = touch ? 11 : 16, FONT = touch ? 14 : 15;
+  let dpr, vw = 0, vh = 0, cols = [];
   const bit = () => (Math.random() < 0.5 ? "0" : "1");
-  function resize() {
-    dpr = Math.min(devicePixelRatio || 1, 2);
-    W = cv.width = tc.width = innerWidth * dpr; H = cv.height = tc.height = innerHeight * dpr;
-    const n = Math.ceil(innerWidth / CELL);
+
+  function sprite(ch, size, color, glow, scale) {
+    const pad = glow ? Math.ceil(size * 0.7) : 2;
+    const s = Math.ceil(size + pad * 2);
+    const c = document.createElement("canvas");
+    c.width = c.height = Math.ceil(s * scale);
+    const g = c.getContext("2d");
+    g.scale(scale, scale);
+    g.font = `700 ${size}px ui-monospace, Menlo, monospace`;
+    g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = color;
+    if (glow) { g.shadowColor = "#3d9bff"; g.shadowBlur = size * 0.6; }
+    if (ch === "*") {
+      g.translate(s / 2, s / 2); g.beginPath();
+      const r = size / 2;
+      for (let i = 0; i < 4; i++) { g.lineTo(0, -r); g.quadraticCurveTo(0, 0, r, 0); g.rotate(Math.PI / 2); }
+      g.closePath(); g.fill();
+    } else g.fillText(ch, s / 2, s / 2 + 1);
+    return { c, s };
+  }
+  let RAIN, TRAIL;
+  function buildSprites() {
+    RAIN = {
+      blue: { 0: sprite("0", FONT, "rgb(90,175,255)", false, dpr), 1: sprite("1", FONT, "rgb(90,175,255)", false, dpr) },
+      white: { 0: sprite("0", FONT, "rgb(225,245,255)", false, dpr), 1: sprite("1", FONT, "rgb(225,245,255)", false, dpr) },
+    };
+    TRAIL = {
+      b: { "#8fd3ff": { 0: sprite("0", 20, "#8fd3ff", true, dpr), 1: sprite("1", 20, "#8fd3ff", true, dpr) },
+           "#ffffff": { 0: sprite("0", 20, "#ffffff", true, dpr), 1: sprite("1", 20, "#ffffff", true, dpr) } },
+      s: { "#8fd3ff": sprite("*", 20, "#8fd3ff", true, dpr), "#ffffff": sprite("*", 20, "#ffffff", true, dpr) },
+    };
+  }
+
+  function makeCols() {
+    const n = Math.ceil(vw / CELL);
     cols = Array.from({ length: n }, (_, i) => ({
       x: i * CELL + CELL / 2,
-      y: Math.random() * (innerHeight + TAIL * CELL),
+      y: Math.random() * (vh + TAIL * CELL),
       v: 0.6 + Math.random() * 1.6,
-      on: Math.random() < 0.55,
+      on: Math.random() < (touch ? 0.45 : 0.55),
       chars: Array.from({ length: TAIL }, bit),
     }));
+  }
+  function resize() {
+    const w = innerWidth;
+    // Phones fire resize while scrolling (address bar shows/hides): only rebuild on a width change,
+    // and size the canvas to the tallest viewport so height changes need no reallocation.
+    const h = touch ? Math.max(innerHeight, screen.height || 0, vh) : innerHeight;
+    if (w === vw && h === vh) return;
+    const widthChanged = w !== vw;
+    vw = w; vh = h;
+    dpr = Math.min(devicePixelRatio || 1, touch ? 1.5 : 2);
+    cv.width = tc.width = Math.round(vw * dpr); cv.height = tc.height = Math.round(vh * dpr);
+    cv.style.height = tc.style.height = vh + "px";
+    buildSprites();
+    if (widthChanged || !cols.length) makeCols();
   }
   resize();
   addEventListener("resize", resize);
 
-  // trail particles: binary digits and sparkles
   const trail = [];
+  const MAXT = touch ? 70 : 200;
   let lastX = null, lastY = null;
   function spawn(x, y, burst) {
     const sparkle = Math.random() < (burst ? 0.45 : 0.32);
@@ -60,87 +107,86 @@
       kind: sparkle ? "s" : "b", ch: bit(), size: sparkle ? 8 + Math.random() * 8 : 13 + Math.random() * 7,
       rot: Math.random() * Math.PI, hue: Math.random() < 0.3 ? "#ffffff" : "#8fd3ff",
     });
-    if (trail.length > 220) trail.splice(0, trail.length - 220);
+    if (trail.length > MAXT) trail.splice(0, trail.length - MAXT);
   }
   addEventListener("pointermove", (e) => {
     if (reduce) return;
-    if (lastX === null) { lastX = e.clientX; lastY = e.clientY; }
+    if (lastX === null || e.pointerType !== "mouse" && trail.length === 0) { lastX = e.clientX; lastY = e.clientY; }
     const d = Math.hypot(e.clientX - lastX, e.clientY - lastY);
-    const steps = Math.min(8, Math.floor(d / 10));
+    const gap = touch ? 22 : 10;
+    const steps = Math.min(touch ? 3 : 8, Math.floor(d / gap));
     for (let i = 1; i <= steps; i++) spawn(lastX + ((e.clientX - lastX) * i) / steps, lastY + ((e.clientY - lastY) * i) / steps, false);
     if (steps) { lastX = e.clientX; lastY = e.clientY; }
   }, { passive: true });
-  addEventListener("pointerdown", (e) => { if (!reduce) for (let i = 0; i < 26; i++) spawn(e.clientX, e.clientY, true); });
+  addEventListener("pointerdown", (e) => { lastX = e.clientX; lastY = e.clientY; if (!reduce) for (let i = 0; i < (touch ? 14 : 26); i++) spawn(e.clientX, e.clientY, true); });
 
-  function star(x, y, r, rot) {
-    const ctx = tx2;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
-    for (let i = 0; i < 4; i++) {
-      ctx.lineTo(0, -r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.rotate(Math.PI / 2);
-    }
-    ctx.closePath(); ctx.fill(); ctx.restore();
+  function stamp(g, sp, x, y, scale) {
+    const d = sp.s * scale;
+    g.drawImage(sp.c, x - d / 2, y - d / 2, d, d);
   }
 
-  let prev = performance.now();
+  let prev = performance.now(), trailDirty = false, rainAcc = 0;
   function frame(now) {
     const dt = Math.min(50, now - prev); prev = now;
+    rainAcc += dt;
+    if (!touch || rainAcc >= 30) { drawRain(rainAcc); rainAcc = 0; }
+    drawTrail(dt);
+    if (fine) { rx += (mouse.x - rx) * 0.18; ry += (mouse.y - ry) * 0.18; ring.style.transform = `translate(${rx}px, ${ry}px)`; }
+    requestAnimationFrame(frame);
+  }
+  function drawRain(dt) {
+    dt = Math.min(60, dt);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, innerWidth, innerHeight);
-    ctx.font = `600 ${FONT}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.clearRect(0, 0, vw, vh);
     const mx = mouse.x, my = mouse.y, R = 190;
+    const useMouse = mouse.active && fine;
 
-    // rain
     for (const c of cols) {
       c.y += c.v * dt * 0.06;
-      if (c.y - TAIL * CELL > innerHeight) { c.y = -Math.random() * 300; c.v = 0.6 + Math.random() * 1.6; c.on = Math.random() < 0.55; }
+      if (c.y - TAIL * CELL > vh) { c.y = -Math.random() * 300; c.v = 0.6 + Math.random() * 1.6; c.on = Math.random() < (touch ? 0.45 : 0.55); }
       if (!c.on) continue;
       if (Math.random() < 0.06) c.chars[(Math.random() * TAIL) | 0] = bit();
-      const near = mouse.active ? Math.max(0, 1 - Math.abs(c.x - mx) / R) : 0;
+      const near = useMouse ? Math.max(0, 1 - Math.abs(c.x - mx) / R) : 0;
       for (let k = 0; k < TAIL; k++) {
         const y = c.y - k * CELL;
-        if (y < -CELL || y > innerHeight + CELL) continue;
-        let a = (1 - k / TAIL) * 0.13;
-        let glow = 0;
+        if (y < -CELL || y > vh + CELL) continue;
+        let a = (1 - k / TAIL) * 0.13, glow = 0;
         if (near) {
           const d = Math.hypot(c.x - mx, y - my);
           if (d < R) { glow = 1 - d / R; a += glow * 0.75; if (Math.random() < glow * 0.25) c.chars[k] = bit(); }
         }
-        ctx.fillStyle = k === 0 || glow > 0.55 ? `rgba(225,245,255,${Math.min(1, a + 0.08)})` : `rgba(90,175,255,${a})`;
-        ctx.fillText(c.chars[k], c.x, y);
+        const white = k === 0 || glow > 0.55;
+        ctx.globalAlpha = white ? Math.min(1, a + 0.08) : a;
+        const sp = (white ? RAIN.white : RAIN.blue)[c.chars[k]];
+        ctx.drawImage(sp.c, c.x - sp.s / 2, y - sp.s / 2, sp.s, sp.s);
       }
     }
-
-    // trail (top layer, above content)
-    tx2.setTransform(dpr, 0, 0, dpr, 0, 0);
-    tx2.clearRect(0, 0, innerWidth, innerHeight);
-    tx2.textAlign = "center"; tx2.textBaseline = "middle";
-    tx2.shadowColor = "#3d9bff";
-    for (let i = trail.length - 1; i >= 0; i--) {
-      const p = trail[i];
-      p.life += dt;
-      const k = p.life / p.max;
-      if (k >= 1) { trail.splice(i, 1); continue; }
-      p.x += p.vx * dt * 0.06; p.y += p.vy * dt * 0.06; p.vx *= 0.97; p.vy = p.vy * 0.97 + 0.012 * dt;
-      const fade = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
-      tx2.globalAlpha = Math.max(0, fade);
-      tx2.fillStyle = p.hue;
-      if (p.kind === "s") {
-        tx2.shadowBlur = 14;
-        const tw = 0.6 + 0.4 * Math.sin(p.life / 60);
-        star(p.x, p.y, p.size * (1 - k * 0.6) * tw, p.rot + p.life / 500);
-      } else {
-        tx2.shadowBlur = 10;
-        if (Math.random() < 0.04) p.ch = bit();
-        tx2.font = `700 ${p.size * (1 - k * 0.3)}px ui-monospace, Menlo, monospace`;
-        tx2.fillText(p.ch, p.x, p.y);
+    ctx.globalAlpha = 1;
+  }
+  function drawTrail(dt) {
+    // trail (top layer, above content); skip clearing when there is nothing to draw
+    if (trail.length || trailDirty) {
+      tx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+      tx2.clearRect(0, 0, vw, vh);
+      for (let i = trail.length - 1; i >= 0; i--) {
+        const p = trail[i];
+        p.life += dt;
+        const k = p.life / p.max;
+        if (k >= 1) { trail.splice(i, 1); continue; }
+        p.x += p.vx * dt * 0.06; p.y += p.vy * dt * 0.06; p.vx *= 0.97; p.vy = p.vy * 0.97 + 0.012 * dt;
+        tx2.globalAlpha = Math.max(0, k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
+        if (p.kind === "s") {
+          const tw = 0.6 + 0.4 * Math.sin(p.life / 60);
+          const sp = TRAIL.s[p.hue], sc = (p.size / 20) * (1 - k * 0.6) * tw * 1.6;
+          tx2.save(); tx2.translate(p.x, p.y); tx2.rotate(p.rot + p.life / 500); stamp(tx2, sp, 0, 0, sc); tx2.restore();
+        } else {
+          if (Math.random() < 0.04) p.ch = bit();
+          stamp(tx2, TRAIL.b[p.hue][p.ch], p.x, p.y, (p.size / 20) * (1 - k * 0.3));
+        }
       }
+      tx2.globalAlpha = 1;
+      trailDirty = trail.length > 0;
     }
-    tx2.globalAlpha = 1; tx2.shadowBlur = 0;
-
-    rx += (mouse.x - rx) * 0.18; ry += (mouse.y - ry) * 0.18;
-    ring.style.transform = `translate(${rx}px, ${ry}px)`;
-    requestAnimationFrame(frame);
   }
   if (!reduce) requestAnimationFrame(frame);
 
@@ -172,7 +218,7 @@
     requestAnimationFrame(parallax);
   }
   addEventListener("pointermove", (e) => { hx = e.clientX / innerWidth - 0.5; hy = e.clientY / innerHeight - 0.5; }, { passive: true });
-  if (!reduce) requestAnimationFrame(parallax);
+  if (!reduce && fine) requestAnimationFrame(parallax);
 
   /* ---------- magnetic buttons ---------- */
   if (fine && !reduce) document.querySelectorAll(".magnetic").forEach((b) => {
@@ -214,7 +260,7 @@
     io.observe(el);
   });
   document.querySelectorAll(".split .w").forEach((w, i) => {
-    w.animate([{ opacity: 0, transform: "translateY(60%) rotateX(-60deg)", filter: "blur(8px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }],
+    w.animate(fine ? [{ opacity: 0, transform: "translateY(60%) rotateX(-60deg)", filter: "blur(8px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }] : [{ opacity: 0, transform: "translateY(40%)" }, { opacity: 1, transform: "none" }],
       { duration: 900, delay: 200 + i * 90, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
   });
 
@@ -223,19 +269,20 @@
   const lanes = [];
   for (let i = 0; i < 32; i++) { const l = document.createElement("div"); l.className = "lane"; const f = document.createElement("i"); l.appendChild(f); lanesEl.appendChild(l); lanes.push({ f, rate: 0.75 + Math.random() * 0.5 }); }
   const hpct = document.getElementById("hpct"), hspeed = document.getElementById("hspeed"), hfill = document.getElementById("hfill"), hstate = document.getElementById("hstate");
-  const CYCLE = 6500; let t0 = performance.now();
+  const CYCLE = 6500; let t0 = performance.now(), lastText = 0;
   function heroLoop(now) {
     let t = (now - t0) / CYCLE;
     if (t > 1.25) { t0 = now; t = 0; lanes.forEach((l) => (l.rate = 0.75 + Math.random() * 0.5)); }
     const k = Math.min(1, t);
     const e = 1 - Math.pow(1 - k, 1.6);
-    lanes.forEach((l) => { l.f.style.width = Math.min(100, e * 100 * l.rate * 1.12) + "%"; });
-    hfill.style.width = e * 100 + "%";
+    lanes.forEach((l) => { l.f.style.transform = `scaleX(${Math.min(1, e * l.rate * 1.12)})`; });
+    hfill.style.transform = `scaleX(${e})`;
+    if (now - lastText > 80 || k >= 1) { lastText = now;
     hpct.textContent = Math.floor(e * 100) + "%";
     const spd = k < 1 ? 218.5 * Math.min(1, k * 5) * (0.94 + 0.06 * Math.sin(now / 90)) : 0;
     hspeed.textContent = spd.toFixed(1);
     hstate.textContent = k < 1 ? "32 connections" : "Completed ✓";
-    hstate.style.color = k < 1 ? "" : "#34c759";
+    hstate.style.color = k < 1 ? "" : "#34c759"; }
     requestAnimationFrame(heroLoop);
   }
   requestAnimationFrame(heroLoop);
@@ -259,11 +306,11 @@
   });
 
   /* ---------- scroll progress styled as a download ---------- */
-  const prog = document.querySelector(".progress"), pfill = document.querySelector(".progress-fill"), ppct = document.getElementById("ppct"), ptag = document.querySelector(".progress-tag");
+  const phead = document.querySelector(".progress-head"), prog = document.querySelector(".progress"), pfill = document.querySelector(".progress-fill"), ppct = document.getElementById("ppct"), ptag = document.querySelector(".progress-tag");
   function onScroll() {
     const max = document.documentElement.scrollHeight - innerHeight;
     const k = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
-    pfill.style.width = k * 100 + "%";
+    pfill.style.transform = `scaleX(${k})`; phead.style.transform = `translateX(${k * innerWidth}px)`;
     prog.classList.toggle("on", scrollY > 40);
     const done = k > 0.995;
     prog.classList.toggle("done", done);
