@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>/* pick the right download before first paint */(function(){var u=navigator.userAgentData,p=((u&&u.platform)||navigator.platform||"")+" "+navigator.userAgent;document.documentElement.dataset.os=/Win/i.test(p)?"win":/Mac|iPhone|iPad/i.test(p)?"mac":"other";})();</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MindDownload: every download, full speed</title>
-  <meta name="description" content="MindDownload is a native macOS download manager. 32 parallel connections, YouTube up to 4K, Reels to MP3, browser capture. No account, no backend, no analytics." />
+  <meta name="description" content="MindDownload is a native download manager for macOS and Windows. 32 parallel connections, YouTube up to 4K, Reels to MP3, browser capture. No account, no backend, no analytics." />
   <meta property="og:title" content="MindDownload: every download, full speed" />
-  <meta property="og:description" content="The download manager for Mac. 32 connections, 4K video, MP3 extraction, fully private." />
+  <meta property="og:description" content="The download manager for Mac and Windows. 32 connections, 4K video, MP3 extraction, fully private." />
   <meta property="og:image" content="assets/logo.png" />
   <meta name="theme-color" content="#02050d" />
   <link rel="icon" href="assets/favicon.png" />
@@ -33,17 +34,18 @@
     <!-- HERO -->
     <section class="hero">
       <div class="hero-copy">
-        <div class="pill reveal"><span class="live"></span> v1.1 · Native for Apple Silicon</div>
+        <div class="pill reveal"><span class="live"></span> v1.1 · Native for Mac &amp; Windows</div>
         <h1 class="reveal split">Every download,<br /><span class="grad">full speed.</span></h1>
-        <p class="lead reveal">MindDownload splits every file into up to <b>32 parallel connections</b>, so a 4 min wait becomes seconds. Use it for YouTube in 4K, Reels to MP3, apps and any file. It runs entirely on your Mac.</p>
+        <p class="lead reveal">MindDownload splits every file into up to <b>32 parallel connections</b>, so a 4 min wait becomes seconds. Use it for YouTube in 4K, Reels to MP3, apps and any file. It runs entirely on your computer.</p>
         <div class="cta-row reveal">
           <a class="btn btn-xl magnetic" id="dl" href="https://github.com/10shubh-ai/minddownload/releases/latest/download/MindDownload-Mac-arm64.zip" download>
             <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3v12M6.5 10l5.5 5.5 5.5-5.5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Download for macOS</span>
+            <span id="dl-label">Download for macOS</span>
           </a>
           <a class="btn-ghost magnetic" href="#film">▶ Watch the film</a>
         </div>
-        <p class="fine reveal">Free · macOS 14+ · Apple Silicon · 2.4 MB</p>
+        <p class="fine reveal" id="dl-fine">Free · macOS 14+ · Apple Silicon · 2.4 MB</p>
+        <p class="also reveal" id="dl-also">Also available for <a id="dl-alt" href="https://github.com/10shubh-ai/minddownload/releases/latest/download/MindDownload-Setup-x64.exe">Windows</a></p>
       </div>
 
       <div class="hero-stage reveal">
@@ -146,7 +148,7 @@
         <article class="card tilt-card reveal big" data-tilt="8">
           <div class="glow"></div>
           <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.8 12.2l2.2 2.2 4.4-4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Stays on your Mac</h3>
+          <h3>Stays on your computer</h3>
           <p>No account. No backend. No analytics. Your downloads never leave your machine.</p>
           <div class="checks"><span>✓ No account</span><span>✓ No backend</span><span>✓ No analytics</span></div>
         </article>
@@ -172,8 +174,8 @@
         <h2>Install in <span class="grad">three steps.</span></h2>
       </div>
       <ol class="steps">
-        <li class="step tilt-card reveal" data-tilt="8"><span class="n">1</span><h3>Download &amp; unzip</h3><p>Open <code>MindDownload-Mac-arm64.zip</code> and drag <b>MindDownload.app</b> into Applications.</p></li>
-        <li class="step tilt-card reveal" data-tilt="8"><span class="n">2</span><h3>First launch</h3><p>The app isn't notarized yet. <b>Right-click → Open</b>, then confirm. You only need to do this once.</p></li>
+        <li class="step tilt-card reveal" data-tilt="8"><span class="n">1</span><h3>Download &amp; install</h3><p class="os-mac">Open <code>MindDownload-Mac-arm64.zip</code> and drag <b>MindDownload.app</b> into Applications.</p><p class="os-win">Run <code>MindDownload-Setup-x64.exe</code>. It installs for your user only, no admin needed. A portable <code>.zip</code> is on the releases page.</p></li>
+        <li class="step tilt-card reveal" data-tilt="8"><span class="n">2</span><h3>First launch</h3><p class="os-mac">The app isn't notarized yet. <b>Right-click → Open</b>, then confirm. You only need to do this once.</p><p class="os-win">The app isn't code-signed yet, so SmartScreen may warn you. Click <b>More info → Run anyway</b>. You only need to do this once.</p></li>
         <li class="step tilt-card reveal" data-tilt="8"><span class="n">3</span><h3>Connect browsers</h3><p>In Settings, choose <b>Connect browsers</b> and load the bundled extension. Downloads now land in MindDownload.</p></li>
       </ol>
     </section>
@@ -189,7 +191,7 @@
 
   <footer>
     <span>© 2026 MindDownload</span>
-    <span>Made for Mac · Local-only, no tracking</span>
+    <span>Made for Mac &amp; Windows · Local-only, no tracking</span>
     <a href="https://github.com/10shubh-ai/minddownload/releases">All releases</a>
   </footer>
 

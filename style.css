@@ -113,6 +113,12 @@ h1 .w { display: inline-block; }
 .lead b { color: #fff; font-weight: 600; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
 .fine { margin-top: 18px; font-size: 13px; color: rgba(255, 255, 255, 0.45); }
+.also { margin-top: 6px; font-size: 13px; color: rgba(255, 255, 255, 0.45); }
+.also a { color: var(--sky); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(169, 224, 255, 0.4); }
+.also a:hover { color: #fff; text-decoration-color: var(--blue2); }
+.os-win { display: none; }
+html[data-os="win"] .os-win { display: block; }
+html[data-os="win"] .os-mac { display: none; }
 
 .hero-stage { perspective: 1600px; display: flex; justify-content: center; }
 .tilt { position: relative; transform-style: preserve-3d; will-change: transform; }

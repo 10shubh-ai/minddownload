@@ -1,3 +1,26 @@
+/* ---------- one hero button, the right file for this OS ---------- */
+(() => {
+  const REL = "https://github.com/10shubh-ai/minddownload/releases/latest/download/";
+  const MAC = { href: REL + "MindDownload-Mac-arm64.zip", label: "Download for macOS", fine: "Free · macOS 14+ · Apple Silicon · 2.4 MB" };
+  const WIN = { href: REL + "MindDownload-Setup-x64.exe", label: "Download for Windows", fine: "Free · Windows 10 & 11 · 64-bit · 70 MB" };
+  const btn = document.getElementById("dl"), label = document.getElementById("dl-label");
+  const fine = document.getElementById("dl-fine"), alt = document.getElementById("dl-alt");
+  if (!btn) return;
+  const apply = (main, other, otherName) => {
+    btn.href = main.href; label.textContent = main.label; fine.textContent = main.fine;
+    alt.href = other.href; alt.textContent = otherName;
+  };
+  if (document.documentElement.dataset.os === "win") {
+    apply(WIN, MAC, "macOS");
+    // Windows on ARM gets the native arm64 installer.
+    navigator.userAgentData?.getHighEntropyValues?.(["architecture"]).then((v) => {
+      if (v.architecture === "arm") { WIN.href = REL + "MindDownload-Setup-arm64.exe"; WIN.fine = WIN.fine.replace("64-bit", "ARM64"); apply(WIN, MAC, "macOS"); }
+    }).catch(() => {});
+  } else {
+    apply(MAC, WIN, "Windows");
+  }
+})();
+
 (() => {
   const root = document.documentElement;
   const fine = matchMedia("(hover: hover) and (pointer: fine)").matches;
